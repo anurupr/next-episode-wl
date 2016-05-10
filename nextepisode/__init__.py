@@ -47,9 +47,12 @@ class List(object):
 
 
 class NextEpisode(List):
+    rooturl = "http://next-episode.net"
+
     def __init__(self, username, password, **kwargs):
         super(List, self).__init__()
         self.browser = mechanize.Browser()
+        self.browser.addheaders = [('User-agent', 'Firefox')]
         self.add_show = self.append
         self.today_list = []
 
@@ -74,7 +77,7 @@ class NextEpisode(List):
         return "<{} {}@next-episode.net WL: {} Shows>".format(self.__class__.__name__, self._username, self.__len__())
 
     def do_login(self, username, password):
-        self.browser.open("http://next-episode.net/")
+        self.browser.open(self.rooturl)
         self.browser.select_form(name="login")
         self.browser.form['username'] = username
         self.browser.form['password'] = password
@@ -85,29 +88,30 @@ class NextEpisode(List):
         if not self._logghedin:
             self.do_login(self._username, self._password)
 
-        html = self.browser.open('http://next-episode.net/settings?action=manageWL').read()
+        html = self.browser.open(self.rooturl+'/user/'+self._username).read()
         soup = BeautifulSoup(html)
         divs = soup.findAll('div',
                             attrs={
-                                'class': 'leftColumn'
+                                'class': 'item'
                             })
         self.list = []
         for div in divs:
-            links = div.findAll('a', attrs={'class': 'name'})
-            for link in links:
+            spans = div.findAll('span',attrs={'class':'headlinehref'})
+            for span in spans:
+		link = span.find("a")
                 if link.contents[0] == "V":
                     link.contents[0] = "V (2009)"
                 try:
                     self.append({
-                        'Name': [link.contents[0]],
+                        'Name': [link.get_text()],
                         'index': uuid3(NAMESPACE_OID, link.get('href').encode('utf8', 'ignore')).__str__(),
-                        'URL': link.get('href').encode('utf8', 'ignore')
+                        'URL': self.rooturl+link.get('href').encode('utf8', 'ignore')
                     })
                 except UnicodeDecodeError:
                     self.append({
                         'Name': [link.contents[0]],
                         'index': 'N/A',
-                        'URL': link.get('href').encode('utf8', 'ignore')
+                        'URL': self.rooturl+link.get('href').encode('utf8', 'ignore')
                     })
 
     def _regexp_tvrage(self, content):
