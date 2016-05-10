@@ -64,14 +64,19 @@ class NextEpisode(List):
 
         self._cache = TVRageCache(cachefile=kwargs.get('cachefile', TVRageCache.DEFAULT_CACHE_FILE))
 
-        if kwargs.get('autologin', True):
+
+         
+
+        if kwargs.get('autologin', False):
             self.do_login(
                 username=username,
                 password=password
             )
 
-        if kwargs.get('autoupdate', True):
-            self.update_list()
+
+        if self._logghedin:
+            if kwargs.get('autoupdate', True):
+                self.update_list()
 
     def __repr__(self):
         return "<{} {}@next-episode.net WL: {} Shows>".format(self.__class__.__name__, self._username, self.__len__())
@@ -81,8 +86,24 @@ class NextEpisode(List):
         self.browser.select_form(name="login")
         self.browser.form['username'] = username
         self.browser.form['password'] = password
-        self.browser.submit()
-        self._logghedin = True
+        html = self.browser.submit()
+        #html = self.browser.read();
+        soup = BeautifulSoup(html)
+        tds = soup.findAll("td", attrs = { 'class': 'tdc2'});
+        invalidDiv = None
+        for td in tds:
+            invalidDiv = td.find("div",style="border: 1px solid red;margin-left:20px;padding-left:5px;border-left:2px solid red;padding-top:10px;padding-bottom:10px;");
+	
+	if invalidDiv != None:
+            text = invalidDiv.get_text()
+            if "invalid" in text.lower():
+                self._logghedin = False
+            else:
+                self._logghedin = True 
+        else:
+            self._logghedin = True
+
+        
 
     def update_list(self):
         if not self._logghedin:
