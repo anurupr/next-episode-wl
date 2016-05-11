@@ -67,7 +67,7 @@ class NextEpisode(List):
 
          
 
-        if kwargs.get('autologin', False):
+        if kwargs.get('autologin', True):
             self.do_login(
                 username=username,
                 password=password
@@ -120,20 +120,25 @@ class NextEpisode(List):
             spans = div.findAll('span',attrs={'class':'headlinehref'})
             for span in spans:
 		link = span.find("a")
+                img = link.find("img")
                 if link.contents[0] == "V":
                     link.contents[0] = "V (2009)"
                 try:
                     self.append({
                         'Name': [link.get_text()],
                         'index': uuid3(NAMESPACE_OID, link.get('href').encode('utf8', 'ignore')).__str__(),
-                        'URL': self.rooturl+link.get('href').encode('utf8', 'ignore')
+                        'URL': self.rooturl+link.get('href').encode('utf8', 'ignore'),
+                        'img' : 'http://'+img.get('src')
                     })
                 except UnicodeDecodeError:
                     self.append({
                         'Name': [link.contents[0]],
                         'index': 'N/A',
-                        'URL': self.rooturl+link.get('href').encode('utf8', 'ignore')
+                        'URL': self.rooturl+link.get('href').encode('utf8', 'ignore'),
+                        'img' : 'http://'+img.get('src')
                     })
+
+        print self.list
 
     def _regexp_tvrage(self, content):
         return {
