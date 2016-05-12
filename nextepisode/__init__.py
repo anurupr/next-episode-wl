@@ -128,7 +128,7 @@ class NextEpisode(List):
                         'Name': [link.get_text()],
                         'index': uuid3(NAMESPACE_OID, link.get('href').encode('utf8', 'ignore')).__str__(),
                         'URL': self.rooturl+link.get('href').encode('utf8', 'ignore'),
-                        'img' : 'http://'+img.get('src')
+                        'img' : 'http:'+img.get('src')
                     })
                 except UnicodeDecodeError:
                     self.append({
