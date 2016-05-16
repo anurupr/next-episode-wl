@@ -64,9 +64,6 @@ class NextEpisode(List):
 
         self._cache = TVRageCache(cachefile=kwargs.get('cachefile', TVRageCache.DEFAULT_CACHE_FILE))
 
-
-         
-
         if kwargs.get('autologin', True):
             self.do_login(
                 username=username,
@@ -125,20 +122,76 @@ class NextEpisode(List):
                     link.contents[0] = "V (2009)"
                 try:
                     self.append({
-                        'Name': [link.get_text()],
-                        'index': uuid3(NAMESPACE_OID, link.get('href').encode('utf8', 'ignore')).__str__(),
-                        'URL': self.rooturl+link.get('href').encode('utf8', 'ignore'),
-                        'img' : 'http:'+img.get('src')
+                        'name': link.get_text(),
+                        'uuid': uuid3(NAMESPACE_OID, link.get('href').encode('utf8', 'ignore')).__str__(),
+                        'link': self.rooturl+link.get('href').encode('utf8', 'ignore'),
+                        'imgurl' : 'http:'+img.get('src')
                     })
                 except UnicodeDecodeError:
                     self.append({
-                        'Name': [link.contents[0]],
-                        'index': 'N/A',
-                        'URL': self.rooturl+link.get('href').encode('utf8', 'ignore'),
-                        'img' : 'http://'+img.get('src')
+                        'name': link.contents[0],
+                        'uuid': 'N/A',
+                        'link': self.rooturl+link.get('href').encode('utf8', 'ignore'),
+                        'imgurl' : 'http://'+img.get('src')
                     })
 
-        print self.list
+        print "{} TV Shows in watchlist".format(len(self.list))
+
+    def parse_episode_contents(self,contents,prev=True):
+        indexes = {}
+        print '\n'
+        print contents
+        print '\n'
+        if prev:
+            indexes = {"title" : 5 , "next-episode-date" : 10, "season" : [13,14], "episode" : 17}
+        else:
+            indexes = {"title" : 5 , "season" : [17,18], "countdown" : 10, "next-episode-date" : 14, "episode" : 21}
+
+        episode = {}
+        for key in indexes.keys():
+            if type(indexes[key]) is not list:
+                html = str(contents[indexes[key]])
+                soup = BeautifulSoup(html) 
+                episode[key] = soup.get_text().strip()
+            else:
+                html = ''.join(str(contents[i]) for i in indexes[key])
+                soup = BeautifulSoup(html)
+                episode[key] = soup.get_text().strip()
+
+        return episode
+
+
+    def get_episode(self,tvshowurl,prev=False,next=True,get_air_time=False):
+        html = self.browser.open(tvshowurl).read()
+        soup = BeautifulSoup(html)
+        ret = {}
+
+        if prev:
+	    # prev episode
+            prevEpisode = {}
+            prevEpisodeDiv = soup.find('div',id='previous_episode')
+            prevEpisode = self.parse_episode_contents(prevEpisodeDiv.contents,prev=True)	
+            print prevEpisode
+            ret['prev'] = prevEpisode
+        
+        if next:
+            # next episode
+            nextEpisodeDiv = soup.find('div',id='next_episode')
+            nextEpisode = self.parse_episode_contents(nextEpisodeDiv.contents,prev=False)
+            print nextEpisode
+            ret['next'] = nextEpisode
+
+        if get_air_time:
+            tvshowDiv = soup.find('div',id='middle_section')
+            c = tvshowDiv.contents
+            html = ''.join(str(c[i]) for i in [7,8,9,10])
+            soup = BeautifulSoup(html)
+            ret['air-time'] = soup.get_text().strip()+" EDT"
+
+        
+        return ret
+
+        	
 
     def _regexp_tvrage(self, content):
         return {
